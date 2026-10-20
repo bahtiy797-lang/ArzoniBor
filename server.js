@@ -69,8 +69,8 @@ setInterval(()=>{for(const a of db.prepare("select * from auctions where status=
  let ok=true;try{db.transaction(()=>charge(a.leader,a.price,'win'))()}catch{ok=false}
  db.prepare('update auctions set status=? where id=?').run(ok?'paid':'unpaid',a.id);
  say(a.leader,ok?`🎉 "${a.title}" sizniki! ${a.price} soʻm balansdan yechildi.`:`🎉 "${a.title}" ni yutdingiz (${a.price} soʻm), lekin balans yetarli emas. Admin bilan bogʻlaning.`);
- ADMINS.forEach(x=>say(x,`🔨 Auksion #${a.id} "${a.title}": gʻolib ${a.leader_name} (${a.leader}), ${a.price} soʻm, ${ok?'toʻlangan':'TOʻLANMAGAN'}`))}},1000);
+ ADMINS.forEach(x=>say(x,`🔨 Auksion #${a.id} "${a.title}": gʻolib ${a.leader_name} (${a.leader}), ${a.price} soʻm, ${ok?'toʻlangan':'TOʻLANMAGAN'}`))}},1000);});
+app.get('/diag',async(q,r)=>{const me=await tg('getMe',{});const wh=await tg('getWebhookInfo',{});r.json({tokenSet:!!BOT_TOKEN,hasSpace:/\s/.test(BOT_TOKEN||''),bot:me.ok?me.result.username:me.description,webhook:wh.ok?{url:wh.result.url,error:wh.result.last_error_message}:wh.description,webappUrl:WEBAPP_URL,secretSet:!!SECRET,adminSet:!!ADMIN_IDS})});
 
-app.listen(PORT,()=>{console.log('http://localhost:'+PORT);
- if(BOT_TOKEN&&WEBAPP_URL)tg('setWebhook',{url:WEBAPP_URL+'/tg',secret_token:SECRET,allowed_updates:['message','pre_checkout_query']})});
-github.com/bahtiy797-lang/ArzoniBor-/edit/main/server.js
+
+
