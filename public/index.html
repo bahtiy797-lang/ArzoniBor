@@ -1,1 +1,48 @@
-public/index.html 
+<!DOCTYPE html><html lang="uz"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Omad Bozor</title><script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--bg:var(--tg-theme-bg-color,#f4f5f9);--card:var(--tg-theme-secondary-bg-color,#fff);--tx:var(--tg-theme-text-color,#14151a);--mu:var(--tg-theme-hint-color,#6b7080);--ac:var(--tg-theme-button-color,#7c3aed);--bad:#dc2626;--ln:rgba(127,127,127,.25)}
+*{box-sizing:border-box}body{margin:auto;max-width:480px;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,sans-serif;padding:12px 12px 90px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}h1{font-size:18px;margin:0}
+.bal{background:var(--card);padding:6px 12px;border-radius:20px;font-weight:600;border:0;color:var(--tx)}
+nav{display:flex;gap:6px;margin-bottom:12px}nav button{flex:1;padding:10px;border:1px solid var(--ln);background:var(--card);color:var(--tx);border-radius:12px;font-weight:600}nav .on{background:var(--ac);color:#fff}
+.card{background:var(--card);border-radius:16px;padding:14px;margin-bottom:12px}.top{display:flex;gap:12px;align-items:center}.em{font-size:38px}
+.mu{color:var(--mu);font-size:13px}.pr{font-size:24px;font-weight:800;color:var(--ac)}.row{display:flex;justify-content:space-between;align-items:end;margin-top:10px}
+.lo{color:var(--bad)}.btn{width:100%;margin-top:10px;padding:12px;border:0;border-radius:12px;background:var(--ac);color:#fff;font-weight:700;font-size:15px}.btn:disabled{opacity:.5}
+.grid{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-top:10px}.grid button{aspect-ratio:1;border:1px solid var(--ln);background:var(--bg);color:var(--mu);border-radius:6px;font-size:10px;padding:0}
+.grid .t{background:var(--ln)}.grid .m{background:var(--ac);color:#fff}
+.toast{position:fixed;left:12px;right:12px;bottom:20px;max-width:456px;margin:auto;background:var(--tx);color:var(--bg);padding:12px;border-radius:12px;text-align:center;opacity:0;transition:.3s;pointer-events:none}.toast.on{opacity:1}
+</style></head><body>
+<header><h1>🎯 Omad Bozor</h1><button class="bal" id="bal" onclick="topup()"></button></header>
+<nav><button id="n1" class="on" onclick="tab(1)">🔨 Auksion</button><button id="n2" onclick="tab(2)">🎟 Omadli chipta</button></nav>
+<div id="v1"></div><div id="v2" hidden></div><div id="adm"></div><div class="toast" id="toast"></div>
+<script>
+const W=Telegram.WebApp;W.ready();W.expand();
+const $=s=>document.querySelector(s),f=n=>Number(n).toLocaleString('ru-RU')+' soʻm';
+const api=(p,b)=>fetch('/api/'+p,{method:b?'POST':'GET',headers:{'content-type':'application/json','x-init':W.initData},body:b&&JSON.stringify(b)}).then(r=>r.json());
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2500)}
+function tab(n){$('#v1').hidden=n!=1;$('#v2').hidden=n!=2;$('#n1').className=n==1?'on':'';$('#n2').className=n==2?'on':''}
+const ST={live:'',paid:'🏆 Sotildi',unpaid:'🏆 Gʻolib aniqlandi',nobody:'Ishtirokchi boʻlmadi'};
+let sig='',S;
+function mm(l){return'00:'+String(l).padStart(2,'0')}
+function render(){
+ $('#bal').textContent='💰 '+f(S.bal);
+ $('#v1').innerHTML=S.auctions.map(a=>{const live=a.status=='live'&&a.left>0;return`<div class="card"><div class="top"><div class="em">${a.emoji}</div><div style="flex:1"><b>${a.title}</b><div class="mu">Bozor narxi: ${f(a.value)}</div></div></div>
+<div class="row"><div><div class="mu">Joriy narx</div><div class="pr">${f(a.price)}</div></div><div style="text-align:right"><div class="mu">${a.leader_name?(live?'Yetakchi: ':'Gʻolib: ')+(a.mine?'Siz':a.leader_name):'Stavka yoʻq'}</div><b class="tm ${a.left<=5?'lo':''}" data-id="${a.id}">${live?'⏱ '+mm(a.left):ST[a.status]||''}</b></div></div>
+<button class="btn" ${live&&!a.mine?'':'disabled'} onclick="bid(${a.id})">${live?(a.mine?'Siz yetakchisiz':'Stavka (1 000 soʻm)'):'Tugadi'}</button></div>`}).join('')||'<p class="mu">Hozircha auksion yoʻq</p>';
+ $('#v2').innerHTML=S.lots.map(l=>{const n=Object.keys(l.taken).length;return`<div class="card"><div class="top"><div class="em">${l.emoji}</div><div style="flex:1"><b>${l.title}</b><div class="mu">Chipta: ${f(l.price)} · ${n}/${l.slots} band</div></div></div>
+${l.status=='done'?`<div class="mu" style="margin-top:8px">🏆 Gʻolib chipta: №${l.winner_slot} ${l.won?'(SIZ!)':''}</div>`:`<div class="grid">${Array.from({length:l.slots},(_,i)=>{const t=l.taken[i+1];return`<button class="${t==2?'m':t?'t':''}" ${t?'disabled':''} onclick="buy(${l.id},${i+1})">${i+1}</button>`}).join('')}</div>`}</div>`}).join('')||'<p class="mu">Hozircha lotereya yoʻq</p>';
+ $('#adm').innerHTML=S.admin?'<button class="btn" onclick="addA()">➕ Auksion</button><button class="btn" onclick="addL()">➕ Lotereya</button>':''}
+async function load(){const s=await api('state');if(s.err)return;S=s;
+ const k=JSON.stringify([s.bal,s.admin,s.auctions.map(a=>[a.id,a.price,a.status,a.leader,a.left>0]),s.lots.map(l=>[l.id,l.status,Object.keys(l.taken).length])]);
+ if(k!==sig){sig=k;render()}else s.auctions.forEach(a=>{const e=document.querySelector(`.tm[data-id="${a.id}"]`);if(e&&a.status=='live'&&a.left>0){e.textContent='⏱ '+mm(a.left);e.className='tm '+(a.left<=5?'lo':'')}})}
+async function act(p,b,ok){const r=await api(p,b);toast(r.err||ok);load()}
+const bid=id=>act('bid',{id},'Stavka qabul qilindi');
+const buy=(lot,slot)=>W.showConfirm(`№${slot} chipta olinsinmi?`,y=>y&&act('buy',{lot,slot},'Chipta olindi 🎟'));
+async function topup(){const a=prompt('Summa (soʻm), kamida 5000','20000');if(!a)return;const r=await api('topup',{amount:a});r.err?toast(r.err):W.openInvoice(r.link,s=>{if(s=='paid'){toast('Toʻlov qabul qilindi');setTimeout(load,1500)}})}
+const addA=()=>{const title=prompt('Mahsulot nomi'),value=prompt('Bozor narxi'),minutes=prompt('Necha daqiqadan keyin tugaydi','5');title&&act('admin/auction',{title,value,minutes},'Qoʻshildi')};
+const addL=()=>{const title=prompt('Mahsulot nomi'),price=prompt('Chipta narxi','10000');title&&act('admin/lot',{title,price},'Qoʻshildi')};
+load();setInterval(load,1000);
+</script></body></html>
+
