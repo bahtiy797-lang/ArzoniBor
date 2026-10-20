@@ -73,3 +73,4 @@ setInterval(()=>{for(const a of db.prepare("select * from auctions where status=
 
 app.listen(PORT,()=>{console.log('http://localhost:'+PORT);
  if(BOT_TOKEN&&WEBAPP_URL)tg('setWebhook',{url:WEBAPP_URL+'/tg',secret_token:SECRET,allowed_updates:['message','pre_checkout_query']})});
+github.com/bahtiy797-lang/ArzoniBor-/edit/main/server.js
