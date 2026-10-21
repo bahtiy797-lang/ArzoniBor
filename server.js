@@ -9,6 +9,7 @@ create unique index if not exists tx_ref on tx(ref);
 create table if not exists auctions(id integer primary key autoincrement,title text,emoji text,value integer,price integer default 1000,end_at integer,leader integer,leader_name text,status text default 'live');
 create table if not exists lots(id integer primary key autoincrement,title text,emoji text,price integer,slots integer default 100,status text default 'open',winner integer,winner_slot integer);
 create table if not exists tickets(lot integer,slot integer,uid integer,primary key(lot,slot));`);
+try{db.exec('alter table auctions add column image text')}catch{}
 const tg=(m,b)=>fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${m}`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b)}).then(r=>r.json()).catch(()=>({}));
 const say=(id,text)=>tg('sendMessage',{chat_id:id,text});
 const app=express();app.use(express.json());app.use(express.static('public'));
@@ -54,13 +55,18 @@ const admin=(q,r,next)=>ADMINS.includes(q.uid)?next():r.sendStatus(403);
 app.post('/api/admin/auction',auth,admin,guard(q=>{const b=q.body;db.prepare('insert into auctions(title,emoji,value,end_at) values(?,?,?,?)').run(String(b.title).slice(0,60),b.emoji||'🎁',+b.value||0,now()+(+b.minutes||5)*60);return{ok:1}}));
 app.post('/api/admin/lot',auth,admin,guard(q=>{const b=q.body;db.prepare('insert into lots(title,emoji,price) values(?,?,?)').run(String(b.title).slice(0,60),b.emoji||'🎁',+b.price||10000);return{ok:1}}));
 
-// Telegram webhook: toʻlov va /start
+// Telegram webhook: toʻlov, rasm va /start
 app.post('/tg',(q,r)=>{if(q.get('x-telegram-bot-api-secret-token')!==SECRET)return r.sendStatus(403);r.sendStatus(200);
  const u=q.body;if(u.pre_checkout_query)tg('answerPreCheckoutQuery',{pre_checkout_query_id:u.pre_checkout_query.id,ok:true});
  const m=u.message;if(!m)return;
  if(m.successful_payment){const p=m.successful_payment,amt=p.total_amount/100;
   db.transaction(()=>{if(db.prepare("insert or ignore into tx(uid,amt,kind,ref) values(?,?,'topup',?)").run(m.from.id,amt,p.telegram_payment_charge_id).changes)db.prepare('update users set bal=bal+? where id=?').run(amt,m.from.id)})();
   say(m.chat.id,`✅ Balans ${amt} soʻmga toʻldirildi`)}
+ else if(m.photo&&ADMINS.includes(m.from.id)){
+  const [title,value,min]=(m.caption||'').split('|').map(s=>s.trim());
+  if(!title)return say(m.chat.id,'Rasm ostiga yozing: Nomi | Bozor narxi | Daqiqa');
+  db.prepare('insert into auctions(title,emoji,value,end_at,image) values(?,?,?,?,?)').run(title.slice(0,60),'🎁',+value||0,now()+(+min||5)*60,m.photo[m.photo.length-1].file_id);
+  say(m.chat.id,'✅ Auksion qoʻshildi')}
  else if(m.text?.startsWith('/start'))tg('sendMessage',{chat_id:m.chat.id,text:'🎯 Omad Bozor: auksion va omadli chiptalar',reply_markup:{inline_keyboard:[[{text:'Oʻynash',web_app:{url:WEBAPP_URL}}]]}})});
 
 // Tugagan auksionlarni yopish
@@ -70,6 +76,13 @@ setInterval(()=>{for(const a of db.prepare("select * from auctions where status=
  db.prepare('update auctions set status=? where id=?').run(ok?'paid':'unpaid',a.id);
  say(a.leader,ok?`🎉 "${a.title}" sizniki! ${a.price} soʻm balansdan yechildi.`:`🎉 "${a.title}" ni yutdingiz (${a.price} soʻm), lekin balans yetarli emas. Admin bilan bogʻlaning.`);
  ADMINS.forEach(x=>say(x,`🔨 Auksion #${a.id} "${a.title}": gʻolib ${a.leader_name} (${a.leader}), ${a.price} soʻm, ${ok?'toʻlangan':'TOʻLANMAGAN'}`))}},1000);
+
+// Auksion rasmi (bot tokenni yashirib beradi)
+app.get('/img/:id',async(q,r)=>{const f=await tg('getFile',{file_id:q.params.id});
+ if(!f.ok)return r.sendStatus(404);
+ const x=await fetch(`https://api.telegram.org/file/bot${BOT_TOKEN}/${f.result.file_path}`);
+ r.set({'content-type':'image/jpeg','cache-control':'public,max-age=86400'});
+ r.send(Buffer.from(await x.arrayBuffer()))});
 
 app.listen(PORT,()=>{console.log('http://localhost:'+PORT);
  if(BOT_TOKEN&&WEBAPP_URL)tg('setWebhook',{url:WEBAPP_URL+'/tg',secret_token:SECRET,allowed_updates:['message','pre_checkout_query']})});
