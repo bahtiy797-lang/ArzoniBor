@@ -8,6 +8,7 @@ header{display:flex;justify-content:space-between;align-items:center;margin-bott
 .bal{background:var(--card);padding:6px 12px;border-radius:20px;font-weight:600;border:0;color:var(--tx)}
 nav{display:flex;gap:6px;margin-bottom:12px}nav button{flex:1;padding:10px;border:1px solid var(--ln);background:var(--card);color:var(--tx);border-radius:12px;font-weight:600}nav .on{background:var(--ac);color:#fff}
 .card{background:var(--card);border-radius:16px;padding:14px;margin-bottom:12px}.top{display:flex;gap:12px;align-items:center}.em{font-size:38px}
+.ph{width:72px;height:72px;border-radius:12px;object-fit:cover;flex-shrink:0}
 .mu{color:var(--mu);font-size:13px}.pr{font-size:24px;font-weight:800;color:var(--ac)}.row{display:flex;justify-content:space-between;align-items:end;margin-top:10px}
 .lo{color:var(--bad)}.btn{width:100%;margin-top:10px;padding:12px;border:0;border-radius:12px;background:var(--ac);color:#fff;font-weight:700;font-size:15px}.btn:disabled{opacity:.5}
 .grid{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-top:10px}.grid button{aspect-ratio:1;border:1px solid var(--ln);background:var(--bg);color:var(--mu);border-radius:6px;font-size:10px;padding:0}
@@ -26,9 +27,10 @@ function tab(n){$('#v1').hidden=n!=1;$('#v2').hidden=n!=2;$('#n1').className=n==
 const ST={live:'',paid:'🏆 Sotildi',unpaid:'🏆 Gʻolib aniqlandi',nobody:'Ishtirokchi boʻlmadi'};
 let sig='',S;
 function mm(l){return'00:'+String(l).padStart(2,'0')}
+function pic(a){return a.image?`<img class="ph" src="/img/${a.image}" onerror="this.outerHTML='<div class=em>${a.emoji}</div>'">`:`<div class="em">${a.emoji}</div>`}
 function render(){
  $('#bal').textContent='💰 '+f(S.bal);
- $('#v1').innerHTML=S.auctions.map(a=>{const live=a.status=='live'&&a.left>0;return`<div class="card"><div class="top"><div class="em">${a.emoji}</div><div style="flex:1"><b>${a.title}</b><div class="mu">Bozor narxi: ${f(a.value)}</div></div></div>
+ $('#v1').innerHTML=S.auctions.map(a=>{const live=a.status=='live'&&a.left>0;return`<div class="card"><div class="top">${pic(a)}<div style="flex:1"><b>${a.title}</b><div class="mu">Bozor narxi: ${f(a.value)}</div></div></div>
 <div class="row"><div><div class="mu">Joriy narx</div><div class="pr">${f(a.price)}</div></div><div style="text-align:right"><div class="mu">${a.leader_name?(live?'Yetakchi: ':'Gʻolib: ')+(a.mine?'Siz':a.leader_name):'Stavka yoʻq'}</div><b class="tm ${a.left<=5?'lo':''}" data-id="${a.id}">${live?'⏱ '+mm(a.left):ST[a.status]||''}</b></div></div>
 <button class="btn" ${live&&!a.mine?'':'disabled'} onclick="bid(${a.id})">${live?(a.mine?'Siz yetakchisiz':'Stavka (1 000 soʻm)'):'Tugadi'}</button></div>`}).join('')||'<p class="mu">Hozircha auksion yoʻq</p>';
  $('#v2').innerHTML=S.lots.map(l=>{const n=Object.keys(l.taken).length;return`<div class="card"><div class="top"><div class="em">${l.emoji}</div><div style="flex:1"><b>${l.title}</b><div class="mu">Chipta: ${f(l.price)} · ${n}/${l.slots} band</div></div></div>
@@ -45,4 +47,5 @@ const addA=()=>{const title=prompt('Mahsulot nomi'),value=prompt('Bozor narxi'),
 const addL=()=>{const title=prompt('Mahsulot nomi'),price=prompt('Chipta narxi','10000');title&&act('admin/lot',{title,price},'Qoʻshildi')};
 load();setInterval(load,1000);
 </script></body></html>
+
 
