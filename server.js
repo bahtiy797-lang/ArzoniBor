@@ -26,8 +26,8 @@ const charge=(uid,amt,kind)=>{if(db.prepare('update users set bal=bal-? where id
  db.prepare('insert into tx(uid,amt,kind) values(?,?,?)').run(uid,-amt,kind)};
 
 app.get('/api/state',auth,guard(q=>{
- const auctions=db.prepare('select * from auctions order by (status="live") desc,id desc limit 20').all().map(a=>({...a,left:Math.max(0,a.end_at-now()),mine:a.leader===q.uid}));
- const lots=db.prepare('select * from lots order by (status="open") desc,id desc limit 10').all().map(l=>({...l,taken:Object.fromEntries(db.prepare('select slot,uid from tickets where lot=?').all(l.id).map(t=>[t.slot,t.uid===q.uid?2:1])),won:l.winner===q.uid}));
+ const auctions=db.prepare('select * from auctions order by (status=\'live\') desc,id desc limit 20').all().map(a=>({...a,left:Math.max(0,a.end_at-now()),mine:a.leader===q.uid}));
+ const lots=db.prepare('select * from lots order by (status=\'open\') desc,id desc limit 10').all().map(l=>({...l,taken:Object.fromEntries(db.prepare('select slot,uid from tickets where lot=?').all(l.id).map(t=>[t.slot,t.uid===q.uid?2:1])),won:l.winner===q.uid}));
  return{bal:db.prepare('select bal from users where id=?').get(q.uid).bal,admin:ADMINS.includes(q.uid),auctions,lots}}));
 
 const bid=db.transaction((uid,name,id)=>{const a=db.prepare("select * from auctions where id=? and status='live'").get(id);
